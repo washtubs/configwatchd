@@ -1,0 +1,9 @@
+sample:
+  command: "echo hello >> ~/dumb-log"
+  watch:
+    - "./watchme"
+i3:
+  command: "i3-msg reload"
+  watch:
+    - "~/.i3/config"
+
