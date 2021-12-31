@@ -12,6 +12,7 @@ import (
 
 var serveFs *flag.FlagSet = flag.NewFlagSet("serve", flag.ExitOnError)
 var flushFs *flag.FlagSet = flag.NewFlagSet("flush", flag.ExitOnError)
+var listFs *flag.FlagSet = flag.NewFlagSet("list", flag.ExitOnError)
 
 var flushOpts configwatchd.FlushOpts = configwatchd.FlushOpts{}
 var serverOpts configwatchd.ServerOptions = configwatchd.ServerOptions{}
@@ -54,7 +55,14 @@ func list(args []string) {
 
 }
 
-func usage() {
+func usage(fs *flag.FlagSet, form string, description string) func() {
+	return func() {
+		fmt.Fprintf(os.Stderr, "%s %s\n  %s\n", fs.Name(), form, description)
+		fs.PrintDefaults()
+	}
+}
+
+func usageFull() {
 	description := `
 configwatchd watches changes to a set of config files that you specify,
 and executes whatever command you want to restart or trigger a reload
@@ -65,16 +73,18 @@ reloading which may be undesirable, the user can reload configs manually.
 
 The config file is yaml and of the following form:
 
-i3:
-  # command is executed by bash
-  command: "i3-msg reload"
-  watch:
-    # tilda (~) expansion is supported (for the beginning of the string)!
-    - "~/.i3/config"`
-	os.Stderr.WriteString("configwatchd (serve|flush|list) [OPTIONS]\n" + description + "\n\n")
+  i3:
+    # command is executed by bash
+    command: "i3-msg reload"
+    watch:
+      # tilda (~) expansion is supported (for the beginning of the string)!
+      - "~/.i3/config"`
+	os.Stderr.WriteString("configwatchd (serve|flush|list) [OPTION]\n" + description + "\n\n")
 	serveFs.Usage()
 	os.Stderr.WriteString("\n")
 	flushFs.Usage()
+	os.Stderr.WriteString("\n")
+	listFs.Usage()
 }
 
 func main() {
@@ -88,9 +98,12 @@ func main() {
 	serveFs.BoolVar(&serverOpts.Verbose, "v", false, "Print debug information to stderr")
 	serveFs.StringVar(&serverOpts.ConfigFile, "config-file", defaultServerConfigPath, "Override the path to server config")
 	flushFs.BoolVar(&flushOpts.Clear, "clear", false, "Instead of execute, clear")
+	serveFs.Usage = usage(serveFs, "[OPTION]", "Runs the file watcher / server.")
+	flushFs.Usage = usage(flushFs, "[OPTION] [...KEYS]", "Tells the server to flush the queue. Optionally pass specific keys you want to process.")
+	listFs.Usage = usage(listFs, "", "Gets the contents of the queue from the server, and prints to stdout.")
 
 	if len(os.Args) < 2 {
-		usage()
+		usageFull()
 		os.Exit(1)
 	}
 
@@ -102,7 +115,7 @@ func main() {
 	}
 	switch os.Args[1] {
 	case "help":
-		usage()
+		usageFull()
 	case "serve":
 		serve(args)
 	case "flush":
@@ -110,7 +123,7 @@ func main() {
 	case "list":
 		list(args)
 	default:
-		usage()
+		usageFull()
 		os.Exit(1)
 	}
 }
