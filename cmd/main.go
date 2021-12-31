@@ -91,6 +91,7 @@ func main() {
 
 	if len(os.Args) < 2 {
 		usage()
+		os.Exit(1)
 	}
 
 	var args []string
@@ -108,5 +109,8 @@ func main() {
 		flush(args)
 	case "list":
 		list(args)
+	default:
+		usage()
+		os.Exit(1)
 	}
 }

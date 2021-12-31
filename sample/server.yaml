@@ -3,7 +3,7 @@ sample:
   watch:
     - "./watchme"
 i3:
-  command: "i3-msg reload"
+  command: "i3-msg restart"
   watch:
     - "~/.i3/config"
 

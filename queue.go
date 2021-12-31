@@ -22,6 +22,7 @@ func (q *queue) executeAll() {
 	for _, current := range q.contents {
 		execute(current, q.mainConfig)
 	}
+	q.contents = make([]string, 0, 10)
 }
 
 func (q *queue) execute(configKeys []string) {
@@ -37,12 +38,12 @@ func (q *queue) clearAll() {
 }
 
 func (q *queue) clear(configKeys []string) {
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
 	q.process(configKeys, true)
 }
 
 func (q *queue) process(configKeys []string, clear bool) {
-	q.mutex.Lock()
-	defer q.mutex.Unlock()
 	newContents := make([]string, 0, len(q.contents))
 	for _, current := range q.contents {
 		found := false
@@ -59,6 +60,7 @@ func (q *queue) process(configKeys []string, clear bool) {
 			newContents = append(newContents, current)
 		}
 	}
+	q.contents = newContents
 }
 
 func (q *queue) enqueue(configKey string) {

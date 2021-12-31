@@ -135,11 +135,11 @@ func StartServer(opts ServerOptions) error {
 					}
 					// TODO: verbose only
 					log.Printf("[%s] op=%s name=%s", configKey, ev.Op, ev.Name)
-					if opts.Queue {
-						q.enqueue(configKey)
-					} else {
-						execute(configKey, mainConfig)
-					}
+
+					// Technically we always use the queue, but when it's disabled, we flush it regularly
+					// This is better than executing immediately every event because sometimes you get them
+					// in quick succession.
+					q.enqueue(configKey)
 				case err, ok := <-watcher.Errors:
 					if !ok {
 						break
@@ -148,6 +148,15 @@ func StartServer(opts ServerOptions) error {
 				}
 			}
 		}(configKey)
+	}
+
+	if !opts.Queue {
+		go func() {
+			for {
+				time.Sleep(500 * time.Millisecond)
+				q.executeAll()
+			}
+		}()
 	}
 
 	for {
