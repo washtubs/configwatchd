@@ -9,7 +9,7 @@ reloading which may be undesirable, the user can reload configs manually.
 
 ### Run the server
 
-## First set up your config
+#### First set up your config
 
 Explicitly list the files you want to watch for each program.
 The config is based on the user config directory.
