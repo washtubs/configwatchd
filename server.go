@@ -130,7 +130,7 @@ func StartServer(opts ServerOptions) error {
 					if !ok {
 						break
 					}
-					if ev.Op != fsnotify.Write {
+					if ev.Op&fsnotify.Write != fsnotify.Write {
 						break
 					}
 					// TODO: verbose only
