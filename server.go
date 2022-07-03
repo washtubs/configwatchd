@@ -34,7 +34,7 @@ type Config struct {
 }
 
 func execute(configKey string, mainConfig MainConfig) {
-	ldebug.Printf("executing %s", configKey)
+	ldebug.Printf("executing %s: %s", configKey, mainConfig[configKey].Command)
 	cmd := exec.Command("bash", "-c", mainConfig[configKey].Command)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -93,6 +93,7 @@ func StartServer(opts ServerOptions) error {
 
 	q := queue{}
 	q.contents = make([]string, 0, 10)
+	q.mainConfig = mainConfig
 
 	l, err := setupReceiver(&q, opts)
 	if err != nil {
@@ -123,7 +124,7 @@ func StartServer(opts ServerOptions) error {
 				lerror.Printf("Error adding watcher directory for %s: %s", watch, err.Error())
 			}
 		}
-		go func(configKey string) {
+		go func(configKey string, config Config) {
 			for {
 				select {
 				case ev, ok := <-watcher.Events:
@@ -159,7 +160,7 @@ func StartServer(opts ServerOptions) error {
 					lerror.Printf("Watch error occured %s", err.Error())
 				}
 			}
-		}(configKey)
+		}(configKey, config)
 
 	}
 
