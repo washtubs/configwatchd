@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"os/user"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -34,12 +34,11 @@ type Config struct {
 }
 
 func execute(configKey string, mainConfig MainConfig) {
-	// TODO: verbose only
-	log.Printf("executing %s", configKey)
+	ldebug.Printf("executing %s", configKey)
 	cmd := exec.Command("bash", "-c", mainConfig[configKey].Command)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		log.Printf("Command [%s] exited with non-zero code: %s\nOutput:\n%s",
+		lerror.Printf("Command [%s] exited with non-zero code: %s\nOutput:\n%s",
 			mainConfig[configKey].Command, err.Error(), string(out))
 	}
 }
@@ -102,7 +101,7 @@ func StartServer(opts ServerOptions) error {
 	defer l.Close()
 
 	for configKey := range mainConfig {
-		log.Print(configKey)
+		ldebug.Print(configKey)
 	}
 	for configKey, config := range mainConfig {
 		watcher, err := fsnotify.NewWatcher()
@@ -112,15 +111,16 @@ func StartServer(opts ServerOptions) error {
 
 		for _, watch := range config.Watch {
 			watchConverted, err := convertWatch(watch)
-			log.Printf("watching %s", watchConverted)
+			ldebug.Printf("watching %s", watchConverted)
 			if err != nil {
-				log.Printf("Error resolving %s: %s", watch, err)
+				lerror.Printf("Error resolving %s: %s", watch, err)
 				continue
 			}
 
-			err = watcher.Add(watchConverted)
+			watchConvertedDir := path.Dir(watchConverted)
+			err = watcher.Add(watchConvertedDir)
 			if err != nil {
-				log.Printf("Error adding watcher for %s: %s", watch, err.Error())
+				lerror.Printf("Error adding watcher directory for %s: %s", watch, err.Error())
 			}
 		}
 		go func(configKey string) {
@@ -133,8 +133,20 @@ func StartServer(opts ServerOptions) error {
 					if ev.Op&fsnotify.Write != fsnotify.Write {
 						break
 					}
-					// TODO: verbose only
-					log.Printf("[%s] op=%s name=%s", configKey, ev.Op, ev.Name)
+					ldebug.Printf("[%s] op=%s name=%s", configKey, ev.Op, ev.Name)
+
+					found := false
+					for _, watch := range config.Watch {
+						// Error checked above
+						watchConverted, _ := convertWatch(watch)
+						if watchConverted == ev.Name {
+							found = true
+						}
+					}
+					if !found {
+						ldebug.Printf("Skipping event for other file in directory")
+						break
+					}
 
 					// Technically we always use the queue, but when it's disabled, we flush it regularly
 					// This is better than executing immediately every event because sometimes you get them
@@ -144,10 +156,11 @@ func StartServer(opts ServerOptions) error {
 					if !ok {
 						break
 					}
-					log.Printf("Watch error occured %s", err.Error())
+					lerror.Printf("Watch error occured %s", err.Error())
 				}
 			}
 		}(configKey)
+
 	}
 
 	if !opts.Queue {

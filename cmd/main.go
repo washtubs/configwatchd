@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path"
@@ -22,6 +23,20 @@ func serve(args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	var debug *log.Logger
+	if serverOpts.Verbose {
+		debug = log.Default()
+	} else {
+		debug = log.New(io.Discard, "", 0)
+	}
+	configwatchd.SetLoggers(struct {
+		Debug *log.Logger
+		Error *log.Logger
+	}{
+		Debug: debug,
+		Error: log.Default(),
+	})
 
 	err = configwatchd.StartServer(serverOpts)
 	if err != nil {
